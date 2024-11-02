@@ -13,7 +13,7 @@ A dedicated VPC is created for the server, which is behind a private load balanc
 
 Once provisioned:
 
-1. The `vpn_bucket` module output holds the location of the S3 bucket storing the `.ovpn` files. Download yours.
+1. The `vpn_bucket` module output points to the S3 bucket storing `.ovpn` files. Download yours.
 
 2. Load your `.ovpn` file into the [AWS VPN client](https://aws.amazon.com/vpn/client-vpn-download/)
 
@@ -25,7 +25,7 @@ Once provisioned:
 
 * At this time only MySQL is supported in the metadata backend.
 
-* The delete protection features for RDS and S3 are disabled by default.
+* The delete protection features for RDS and S3 are disabled by default. Enable them if needed.
 
 
 ## Architecture
@@ -34,7 +34,7 @@ Once provisioned:
 
 ## Usage
 
-See the example below
+See an example below with all input parameters
 
 ```hcl
 module "mlflow_server" {
@@ -47,11 +47,11 @@ module "mlflow_server" {
     project = "mlops-platform"
 
     vpc_params = {
-    cidr               = "10.0.0.0/16"
-    private_subnets    = ["10.0.0.0/27", "10.0.0.32/27"]
-    public_subnets     = ["10.0.0.64/27", "10.0.0.96/27"]
-    db_subnets         = ["10.0.0.128/27", "10.0.0.160/27"]
-    azs                = ["us-east-1a", "us-east-1b"]
+        cidr               = "10.0.0.0/16"
+        private_subnets    = ["10.0.0.0/27", "10.0.0.32/27"]
+        public_subnets     = ["10.0.0.64/27", "10.0.0.96/27"]
+        db_subnets         = ["10.0.0.128/27", "10.0.0.160/27"]
+        azs                = ["us-east-1a", "us-east-1b"]
     }
 
     vpn_params = {
@@ -68,6 +68,7 @@ module "mlflow_server" {
         name              = "mlflowdb"
         username          = "mlflow_db_user"
         port              = "3306"
+        deletion_protection = false
     }
 
     server_params = {
@@ -77,5 +78,7 @@ module "mlflow_server" {
         port = 5000
         name = "mlflow_server"
     }
+
+    s3_force_destroy = true
 }
 ```

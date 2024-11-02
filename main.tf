@@ -30,7 +30,7 @@ module "s3_bucket" {
   bucket = "${var.project}-${var.env_name}-mlflow-artifact-store"
   acl    = "private"
 
-  force_destroy = true
+  force_destroy = var.force_destroy
   control_object_ownership = true
   object_ownership         = "ObjectWriter"
 
@@ -152,6 +152,9 @@ module "db" {
 
   option_group_name = "mlflow-server-option-group"
   skip_final_snapshot = true
+
+  # Database Deletion Protection
+  deletion_protection = var.db_params.deletion_protection
 
 }
 
