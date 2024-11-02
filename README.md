@@ -27,6 +27,8 @@ Once provisioned:
 
 * The delete protection features for RDS and S3 are disabled by default. Enable them if needed.
 
+* The server runs on Python 3.12, and installs the latest MLFlow version available.
+
 
 ## Architecture
 

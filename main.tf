@@ -218,17 +218,6 @@ module "alb" {
       target_type      = "ip"
       load_balancing_cross_zone_enabled = true
 
-      # health_check = {
-      #   enabled             = true
-      #   healthy_threshold   = 3
-      #   interval            = 30
-      #   matcher             = "200"
-      #   path                = "/health"
-      #   port                = var.server_params.port
-      #   protocol            = "HTTP"
-      #   timeout             = 10
-      #   unhealthy_threshold = 3
-      # }
       create_attachment = false
     }
   }

@@ -1,8 +1,5 @@
 FROM python:3.12.0
 
-# RUN adduser --disabled-password --gecos '' mlflow
-# USER mlflow
-
 RUN pip install \
     mlflow \
     pymysql \
