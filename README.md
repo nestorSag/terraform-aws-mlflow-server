@@ -15,7 +15,7 @@ Once provisioned:
 
 1. The `vpn_bucket` module output holds the location of the S3 bucket storing the `.ovpn` files. Download yours.
 
-2. Load your `.ovpn` file into the [AWS VPN client]https://aws.amazon.com/vpn/client-vpn-download/
+2. Load your `.ovpn` file into the [AWS VPN client](https://aws.amazon.com/vpn/client-vpn-download/)
 
 3. Log into the VPN
 
