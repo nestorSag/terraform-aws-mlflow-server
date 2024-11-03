@@ -23,6 +23,8 @@ Once provisioned:
 
 ## NOTES
 
+* The module builds and uploads the server's Docker image, so `docker` needs to be installed and running.
+
 * At this time only MySQL is supported in the metadata backend.
 
 * The delete protection features for RDS and S3 are disabled by default. Enable them if needed.
