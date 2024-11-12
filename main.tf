@@ -4,12 +4,12 @@ module "vpc" {
   source = "git::https://github.com/terraform-aws-modules/terraform-aws-vpc?ref=12caf80"
 
   name = "${var.project}-vpc"
-  cidr = var.vpc_params.cidr
+  cidr = var.vpc_cidr_block
 
-  azs              = slice(data.aws_availability_zones.this.names, 0, 2)
-  private_subnets  = var.vpc_params.private_subnets
-  public_subnets   = var.vpc_params.public_subnets
-  database_subnets = var.vpc_params.db_subnets
+  azs              = slice(data.aws_availability_zones.this.names, 0, min(3, length(var.vpc_private_subnets)))
+  private_subnets  = var.vpc_private_subnets
+  public_subnets   = var.vpc_public_subnets
+  database_subnets = var.vpc_db_subnets
 
   enable_vpn_gateway = true
   map_public_ip_on_launch = false
@@ -30,7 +30,7 @@ module "s3_bucket" {
   bucket = "${var.project}-${var.env_name}-mlflow-artifact-store"
   acl    = "private"
 
-  force_destroy = var.force_destroy
+  force_destroy = var.s3_force_destroy
   control_object_ownership = true
   object_ownership         = "ObjectWriter"
 
@@ -96,14 +96,14 @@ module "vpn" {
   # Network information
   vpc_id                 = module.vpc.vpc_id
   subnet_id              = module.vpc.public_subnets[0]
-  client_cidr_block      = var.vpn_params.cidr # It must be different from the primary VPC CIDR
+  client_cidr_block      = var.vpn_cidr_block # It must be different from the primary VPC CIDR
   # VPN config options
   split_tunnel           = "true" # or false
   vpn_inactive_period = "300" # seconds
   session_timeout_hours  = "8"
   logs_retention_in_days = "7"
   # List of users to be created
-  aws-vpn-client-list    = var.vpn_params.clients
+  aws-vpn-client-list    = var.vpn_clients
 }
 
 module "db_sg" {
@@ -115,13 +115,13 @@ module "db_sg" {
 
   # ingress_cidr_blocks      = module.vpc.private_subnets_cidr_blocks
   # ingress_rules            = ["mysql-3306-tcp"]
-  ingress_with_cidr_blocks = [for subnet_cidr in var.vpc_params.private_subnets : 
+  ingress_with_cidr_blocks = [for subnet_cidr_block in module.vpc.private_subnets_cidr_blocks : 
     {
-      from_port   = tonumber(var.db_params.port)
-      to_port     = tonumber(var.db_params.port)
+      from_port   = tonumber(var.db_port)
+      to_port     = tonumber(var.db_port)
       protocol    = "TCP"
       description = "DB access from private subnets"
-      cidr_blocks = subnet_cidr
+      cidr_blocks = subnet_cidr_block
     }
   ]
 }
@@ -131,17 +131,17 @@ module "db" {
   source = "git::github.com/terraform-aws-modules/terraform-aws-rds?ref=4481ddd"
   identifier = "mlflow-data-store"
 
-  db_name = var.db_params.name
+  db_name = var.db_name
 
-  engine            = var.db_params.engine
-  engine_version    = var.db_params.engine_version
-  major_engine_version = var.db_params.engine_version
-  instance_class    = var.db_params.instance_class
-  allocated_storage = var.db_params.allocated_storage
-  family = var.db_params.family
+  engine            = "mysql"
+  engine_version    = "8.0"
+  major_engine_version = "8.0"
+  instance_class    = var.db_instance_class
+  allocated_storage = var.db_allocated_storage
+  family = "mysql8.0"
 
-  username = var.db_params.username
-  port     = var.db_params.port
+  username = var.db_username
+  port     = var.db_port
   manage_master_user_password = true
 
   # DB subnet group
@@ -154,7 +154,7 @@ module "db" {
   skip_final_snapshot = true
 
   # Database Deletion Protection
-  deletion_protection = var.db_params.deletion_protection
+  deletion_protection = var.db_deletion_protection
 
 }
 
@@ -180,30 +180,30 @@ module "alb" {
   # Security Group
   security_group_ingress_rules = {
     http_vpc = {
-      from_port   = var.server_params.port
-      to_port     = var.server_params.port
+      from_port   = var.server_port
+      to_port     = var.server_port
       ip_protocol = "tcp"
       description = "HTTP web traffic"
-      cidr_ipv4   = var.vpc_params.cidr
+      cidr_ipv4   = module.vpc.vpc_cidr_block
     }
     http_vpn = {
-      from_port   = var.server_params.port
-      to_port     = var.server_params.port
+      from_port   = var.server_port
+      to_port     = var.server_port
       ip_protocol = "tcp"
       description = "HTTP web traffic"
-      cidr_ipv4   = var.vpn_params.cidr
+      cidr_ipv4   = var.vpn_cidr_block
     }
   }
   security_group_egress_rules = {
     vpc_all = {
       ip_protocol = "-1"
-      cidr_ipv4   = var.vpc_params.cidr
+      cidr_ipv4   = module.vpc.vpc_cidr_block
     }
   }
 
   listeners = {
     mlflow-server-http-forward = {
-      port     = var.server_params.port
+      port     = var.server_port
       protocol = "HTTP"
       forward = {
         target_group_key = "mlflow_server_tgt_group"
@@ -214,7 +214,7 @@ module "alb" {
   target_groups = {
     mlflow_server_tgt_group = {
       backend_protocol = "HTTP"
-      backend_port     = var.server_params.port
+      backend_port     = var.server_port
       target_type      = "ip"
       load_balancing_cross_zone_enabled = true
 
@@ -245,11 +245,11 @@ module "ecs_service" {
   name = "${var.project}-mlflow-service"
   depends_on = [null_resource.build_and_push_server_image, module.alb, module.db]
 
-  cpu    = var.server_params.cpu
-  memory = var.server_params.memory
+  cpu    = var.server_cpu
+  memory = var.server_memory
 
   autoscaling_min_capacity = 1
-  autoscaling_max_capacity = var.server_params.autoscaling_max_capacity
+  autoscaling_max_capacity = var.server_autoscaling_max_capacity
 
   subnet_ids = module.vpc.private_subnets
 
@@ -257,9 +257,9 @@ module "ecs_service" {
 
   container_definitions = {
 
-    (var.server_params.name) = {
-      cpu    = var.server_params.cpu
-      memory = var.server_params.memory
+    (var.server_name) = {
+      cpu    = var.server_cpu
+      memory = var.server_memory
 
       readonly_root_filesystem = false
 
@@ -271,7 +271,7 @@ module "ecs_service" {
         },
         {
           name  = "USERNAME"
-          value = var.db_params.username
+          value = var.db_username
         },
         {
           name  = "PASSWORD"
@@ -283,11 +283,11 @@ module "ecs_service" {
         }, 
         {
           name  = "DATABASE"
-          value = var.db_params.name
+          value = var.db_name
         },
         {
           name = "MLFLOW_PORT",
-          value = "${var.server_params.port}"
+          value = "${var.server_port}"
         }
       ]
       essential = true
@@ -302,9 +302,9 @@ module "ecs_service" {
       }
       port_mappings = [
         {
-          containerPort = var.server_params.port
-          hostPort      = var.server_params.port
-          name          = var.server_params.name
+          containerPort = var.server_port
+          hostPort      = var.server_port
+          name          = var.server_name
           protocol      = "tcp"
         },
       ]
@@ -314,8 +314,8 @@ module "ecs_service" {
   load_balancer = {
     service = {
       target_group_arn = module.alb.target_groups["mlflow_server_tgt_group"].arn
-      container_name   = var.server_params.name
-      container_port   = var.server_params.port
+      container_name   = var.server_name
+      container_port   = var.server_port
     }
   }
 
@@ -323,8 +323,8 @@ module "ecs_service" {
   security_group_rules = {
     alb_ingress = {
       type                     = "ingress"
-      from_port                = var.server_params.port
-      to_port                  = var.server_params.port
+      from_port                = var.server_port
+      to_port                  = var.server_port
       protocol                 = "tcp"
       description              = "Service port"
       source_security_group_id = module.alb.security_group_id
@@ -339,7 +339,7 @@ module "ecs_service" {
   }
 
   create_iam_role = true
-  tasks_iam_role_name        = "${var.server_params.name}-task-role"
+  tasks_iam_role_name        = "${var.server_name}-task-role"
   tasks_iam_role_description = "Role for MLFlow server task"
   tasks_iam_role_statements = [
     {
@@ -371,7 +371,7 @@ module "ecs_service" {
 
   create_task_exec_policy   = true
   create_task_exec_iam_role = true
-  task_exec_iam_role_name   = "${var.server_params.name}-task-exec-role"
+  task_exec_iam_role_name   = "${var.server_name}-task-exec-role"
   task_exec_iam_role_description = "Role for MLFlow server task execution"
   task_exec_iam_statements = [
     {
