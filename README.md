@@ -57,9 +57,6 @@ module "mlflow_server" {
     vpn_cidr_block = "10.1.0.0/16"
     vpn_clients    = ["root", "dev1", "dev2"] #Do not delete "root" user!
 
-    db_engine              = "mysql"
-    db_engine_version      = "8.0"
-    db_family              = "mysql8.0"
     db_instance_class      = "db.t3.micro"
     db_allocated_storage   = 10
     db_name                = "mlflowdb"

@@ -29,16 +29,6 @@ variable "vpn_clients" {
     type        = list(string)
 }
 
-variable "db_engine" {
-    description = "Database engine"
-    type        = string
-}
-
-variable "db_engine_version" {
-    description = "Database engine version"
-    type        = string
-}
-
 variable "db_instance_class" {
     description = "Database instance class"
     type        = string
@@ -61,11 +51,6 @@ variable "db_username" {
 
 variable "db_port" {
     description = "Database port"
-    type        = string
-}
-
-variable "db_family" {
-    description = "Database family"
     type        = string
 }
 

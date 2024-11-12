@@ -30,7 +30,7 @@ module "s3_bucket" {
   bucket = "${var.project}-${var.env_name}-mlflow-artifact-store"
   acl    = "private"
 
-  force_destroy = var.force_destroy
+  force_destroy = var.s3_force_destroy
   control_object_ownership = true
   object_ownership         = "ObjectWriter"
 
@@ -133,12 +133,12 @@ module "db" {
 
   db_name = var.db_name
 
-  engine            = var.db_engine
-  engine_version    = var.db_engine_version
-  major_engine_version = var.db_engine_version
+  engine            = "mysql"
+  engine_version    = "8.0"
+  major_engine_version = "8.0"
   instance_class    = var.db_instance_class
   allocated_storage = var.db_allocated_storage
-  family = var.db_family
+  family = "mysql8.0"
 
   username = var.db_username
   port     = var.db_port
