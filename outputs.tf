@@ -17,3 +17,8 @@ output vpc_id {
   description = "VPC ID"
   value       = module.vpc.vpc_id
 }
+
+output server_subnet_ids {
+  description = "Subnets for server instances"
+  value       = module.vpc.private_subnets
+}

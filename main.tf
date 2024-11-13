@@ -275,7 +275,7 @@ module "ecs_service" {
         },
         {
           name  = "PASSWORD"
-          value = local.db_password
+          value = urlencode(local.db_password)
         },
         {
           name  = "DB_ENDPOINT" # host:port
